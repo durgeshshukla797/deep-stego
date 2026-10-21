@@ -1,0 +1,23 @@
+# ── HF Spaces & Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+
+# ── Model weights (tracked via Git LFS on HF) ──
+# best.pt is tracked by LFS, not gitignored
+
+# ── IDE ──
+.vscode/
+.idea/
+
+# ── OS ──
+Thumbs.db
+.DS_Store
+
+# ── Training artifacts (not needed for deployment) ──
+deep_stego_train.py
+notebook.pdf
+test_crypto.py
