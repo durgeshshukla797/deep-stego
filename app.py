@@ -340,12 +340,32 @@ def insert_message(sid, rid, path, note, has_pp, nonce_b64, salt_b64):
     }).execute()
 
 def get_inbox(uid):
-    return (sb.table("messages").select("*, profiles!messages_sender_id_fkey(username,stego_id)")
-            .eq("receiver_id",uid).order("created_at",desc=True).execute()).data or []
+    try:
+        return (sb.table("messages").select("*, profiles!messages_sender_id_fkey(username,stego_id)")
+                .eq("receiver_id",uid).order("created_at",desc=True).execute()).data or []
+    except Exception:
+        try:
+            msgs = (sb.table("messages").select("*").eq("receiver_id",uid).order("created_at",desc=True).execute()).data or []
+            for m in msgs:
+                p = sb.table("profiles").select("username,stego_id").eq("id", m.get("sender_id")).execute().data
+                m["profiles"] = p[0] if p else {}
+            return msgs
+        except Exception:
+            return []
 
 def get_sent(uid):
-    return (sb.table("messages").select("*, profiles!messages_receiver_id_fkey(username,stego_id)")
-            .eq("sender_id",uid).order("created_at",desc=True).execute()).data or []
+    try:
+        return (sb.table("messages").select("*, profiles!messages_receiver_id_fkey(username,stego_id)")
+                .eq("sender_id",uid).order("created_at",desc=True).execute()).data or []
+    except Exception:
+        try:
+            msgs = (sb.table("messages").select("*").eq("sender_id",uid).order("created_at",desc=True).execute()).data or []
+            for m in msgs:
+                p = sb.table("profiles").select("username,stego_id").eq("id", m.get("receiver_id")).execute().data
+                m["profiles"] = p[0] if p else {}
+            return msgs
+        except Exception:
+            return []
 
 def download_stego(p): return sb.storage.from_("stego-images").download(p)
 def mark_revealed(mid): sb.table("messages").update({"revealed":True}).eq("id",mid).execute()
@@ -366,14 +386,22 @@ def _ensure_profile(user, username=None):
 
 def do_register(username, email, password):
     try:
+        username = (username or "").strip()
+        email = (email or "").strip().lower()
+        password = password or ""
         sid = generate_stego_id()
         res = sb.auth.sign_up({"email": email, "password": password,
             "options": {"data": {"username": username}}})
         if not res.user:
-            return False, None, "Registration failed."
+            return False, None, "Registration failed.", False
         # Create profile (upsert handles duplicates gracefully)
         sb.table("profiles").upsert({"id": res.user.id, "username": username, "stego_id": sid}).execute()
-        return True, sid, None
+        
+        # Auto-login immediately after registration
+        login_ok, _ = do_login(email, password)
+        if login_ok:
+            return True, sid, None, True
+        return True, sid, None, False
     except Exception as e:
         err = str(e)
         if "already registered" in err.lower() or "already been registered" in err.lower():
@@ -382,14 +410,21 @@ def do_register(username, email, password):
                 login_res = sb.auth.sign_in_with_password({"email": email, "password": password})
                 if login_res.user:
                     profile = _ensure_profile(login_res.user, username)
-                    return False, None, f"This email is already registered. Your Stego-ID is {profile.get('stego_id','N/A')}. Please sign in instead."
+                    st.session_state.user = login_res.user
+                    st.session_state.profile = profile
+                    if login_res.session:
+                        st.session_state["_sb_access_token"] = login_res.session.access_token
+                        st.session_state["_sb_refresh_token"] = login_res.session.refresh_token
+                    return True, profile.get("stego_id"), None, True
             except Exception:
                 pass
-            return False, None, "This email is already registered. Please sign in."
-        return False, None, err
+            return False, None, "This email is already registered. Please sign in.", False
+        return False, None, err, False
 
 def do_login(email, password):
     try:
+        email = (email or "").strip().lower()
+        password = password or ""
         res = sb.auth.sign_in_with_password({"email": email, "password": password})
         if res.user:
             profile = _ensure_profile(res.user)
@@ -404,9 +439,9 @@ def do_login(email, password):
     except Exception as e: return False, str(e)
 
 def do_logout():
-    for k in ["user","profile","stego_result","_sb_access_token","_sb_refresh_token",
-              "_passphrase_confirmed","_passphrase_value","_search_results"]:
-        if k in st.session_state: st.session_state[k]=None
+    # Clear all session keys so no leftover inputs, passwords, or data remain
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
     try: sb.auth.sign_out()
     except Exception: pass
     st.rerun()
@@ -416,18 +451,19 @@ for k in ["user","profile","stego_result"]:
     if k not in st.session_state: st.session_state[k]=None
 
 # ══════════════════════════════════════════════════════════════════════════════
-# HERO
+# HERO & LANDING (Only shown when not logged in)
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("""<div class="hero">
-<h1>🔐 Deep-Stego Secure</h1>
-<p class="subtitle">Military-grade neural image steganography with AES-256 encryption.<br>
-Hide secrets inside ordinary images — invisible and unbreakable.</p>
-<div class="badge-row">
-<div class="tech-badge"><span class="dot dot-purple"></span>Dual U-Net</div>
-<div class="tech-badge"><span class="dot dot-blue"></span>AES-256-GCM</div>
-<div class="tech-badge"><span class="dot dot-green"></span>128×128 HD</div>
-<div class="tech-badge"><span class="dot dot-amber"></span>SSIM &gt;0.92</div>
-</div></div>""", unsafe_allow_html=True)
+if st.session_state.user is None:
+    st.markdown("""<div class="hero">
+    <h1>🔐 Deep-Stego Secure</h1>
+    <p class="subtitle">Military-grade neural image steganography with AES-256-GCM encryption.<br>
+    Hide secrets inside ordinary images — invisible, imperceptible, and mathematically unbreakable.</p>
+    <div class="badge-row">
+    <div class="tech-badge"><span class="dot dot-purple"></span>Dual U-Net</div>
+    <div class="tech-badge"><span class="dot dot-blue"></span>AES-256-GCM</div>
+    <div class="tech-badge"><span class="dot dot-green"></span>128×128 HD</div>
+    <div class="tech-badge"><span class="dot dot-amber"></span>SSIM &gt;0.92</div>
+    </div></div>""", unsafe_allow_html=True)
 
 with st.spinner("Loading AI model..."):
     hiding_net, reveal_net, model_error = load_models()
@@ -435,48 +471,74 @@ if model_error:
     st.error(f"⚠️ {model_error}"); st.stop()
 
 # ══════════════════════════════════════════════════════════════════════════════
-# AUTH
+# AUTHENTICATION
 # ══════════════════════════════════════════════════════════════════════════════
 if st.session_state.user is None:
-    tab_login, tab_reg = st.tabs(["🔑  Sign In", "✨  Create Account"])
+    col_l, col_center, col_r = st.columns([1, 2, 1])
+    with col_center:
+        tab_login, tab_reg = st.tabs(["🔑  Sign In", "✨  Create Account"])
 
-    with tab_login:
-        st.markdown('<div class="auth-title">Welcome back</div>', unsafe_allow_html=True)
-        st.markdown('<div class="auth-sub">Sign in to access your encrypted messages</div>', unsafe_allow_html=True)
-        l_email = st.text_input("Email", placeholder="you@email.com", key="le")
-        l_pass = st.text_input("Password", type="password", placeholder="Enter your password", key="lp")
-        if st.button("Sign In", type="primary", use_container_width=True, key="log_btn"):
-            ok, err = do_login(l_email, l_pass)
-            if ok: st.rerun()
-            else: st.error(err or "Login failed.")
-        st.markdown('<div class="auth-divider">secured with Supabase Auth</div>', unsafe_allow_html=True)
-        st.markdown("""<div style="display:flex;justify-content:center;flex-wrap:wrap">
-        <div class="feature-pill">🔐 E2E Encrypted</div>
-        <div class="feature-pill">🧠 AI Powered</div>
-        <div class="feature-pill">👁️ Invisible</div>
-        </div>""", unsafe_allow_html=True)
+        with tab_login:
+            st.markdown('<div class="auth-title">Welcome Back</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Sign in to access your encrypted stego inbox and decoder</div>', unsafe_allow_html=True)
+            
+            with st.form("login_form", clear_on_submit=False):
+                l_email = st.text_input("Email", placeholder="you@email.com", key="auth_login_email")
+                l_pass = st.text_input("Password", type="password", placeholder="Enter your password", key="auth_login_pass")
+                submit_login = st.form_submit_button("Sign In", type="primary", use_container_width=True)
+                
+                if submit_login:
+                    if not l_email or not l_pass:
+                        st.warning("Please provide both email and password.")
+                    else:
+                        ok, err = do_login(l_email, l_pass)
+                        if ok:
+                            # Clear auth inputs immediately so fields don't linger
+                            for k in ["auth_login_email", "auth_login_pass", "auth_reg_user", "auth_reg_email", "auth_reg_pass"]:
+                                st.session_state.pop(k, None)
+                            st.rerun()
+                        else:
+                            st.error(err or "Invalid credentials. Please verify your email and password.")
 
-    with tab_reg:
-        st.markdown('<div class="auth-title">Join Deep-Stego Secure</div>', unsafe_allow_html=True)
-        st.markdown('<div class="auth-sub">Create your account and get a unique Stego-ID</div>', unsafe_allow_html=True)
-        r_user = st.text_input("Username", placeholder="john_doe", key="ru")
-        r_email = st.text_input("Email", placeholder="you@email.com", key="re")
-        r_pass = st.text_input("Password", type="password", placeholder="Min 6 characters", key="rp")
-        st.markdown("""<div class="info-banner">
-        🛡️ Every account can <b>send</b> and <b>receive</b> secret images.<br>
-        You'll get a unique <b>Stego-ID</b> for others to find you.
-        </div>""", unsafe_allow_html=True)
-        if st.button("Create Account", type="primary", use_container_width=True, key="reg_btn"):
-            if all([r_user, r_email, r_pass]):
-                ok, sid, err = do_register(r_user, r_email, r_pass)
-                if ok:
-                    st.markdown(f"""<div class="success-banner">
-                    ✅ Account created! Your Stego-ID: <b style="font-family:'JetBrains Mono';font-size:1.1rem">{sid}</b>
-                    </div>""", unsafe_allow_html=True)
-                    st.info("Now sign in with your credentials.")
-                else: st.error(err or "Registration failed.")
-            else: st.warning("Please fill all fields.")
+            st.markdown('<div class="auth-divider">Secured with Supabase Authentication</div>', unsafe_allow_html=True)
+            st.markdown("""<div style="display:flex;justify-content:center;flex-wrap:wrap">
+            <div class="feature-pill">🔐 E2E Encrypted</div>
+            <div class="feature-pill">🧠 AI Powered</div>
+            <div class="feature-pill">👁️ Invisible Payload</div>
+            </div>""", unsafe_allow_html=True)
 
+        with tab_reg:
+            st.markdown('<div class="auth-title">Join Deep-Stego Secure</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Create your account to get an instant Stego-ID and auto-login</div>', unsafe_allow_html=True)
+            
+            with st.form("register_form", clear_on_submit=False):
+                r_user = st.text_input("Username", placeholder="e.g. duggu", key="auth_reg_user")
+                r_email = st.text_input("Email", placeholder="you@email.com", key="auth_reg_email")
+                r_pass = st.text_input("Password", type="password", placeholder="Minimum 6 characters", key="auth_reg_pass")
+                st.markdown("""<div class="info-banner" style="font-size:0.83rem">
+                🛡️ You will automatically receive a unique <b>Stego-ID</b> for sending & receiving secret images.
+                </div>""", unsafe_allow_html=True)
+                submit_reg = st.form_submit_button("Create Account & Log In", type="primary", use_container_width=True)
+                
+                if submit_reg:
+                    if not (r_user and r_email and r_pass):
+                        st.warning("Please fill in all fields.")
+                    elif len(r_pass) < 6:
+                        st.error("Password must be at least 6 characters.")
+                    else:
+                        with st.spinner("Creating account & logging you in..."):
+                            ok, sid, err, auto_logged = do_register(r_user, r_email, r_pass)
+                            if ok:
+                                # Clear input fields
+                                for k in ["auth_login_email", "auth_login_pass", "auth_reg_user", "auth_reg_email", "auth_reg_pass"]:
+                                    st.session_state.pop(k, None)
+                                if auto_logged:
+                                    st.session_state["_just_registered"] = True
+                                    st.rerun()
+                                else:
+                                    st.success(f"✅ Account created! Your Stego-ID is {sid}. You can now sign in.")
+                            else:
+                                st.error(err or "Registration failed.")
 
     st.stop()
 
@@ -486,21 +548,43 @@ if st.session_state.user is None:
 profile = st.session_state.profile
 uid = profile["id"]; uname = profile["username"]; stego_id = profile.get("stego_id","N/A")
 
+# Welcoming banner on first signup
+if st.session_state.get("_just_registered"):
+    st.balloons()
+    st.markdown(f"""<div class="success-banner" style="font-size:1rem;margin-bottom:1.5rem">
+    🎉 <b>Welcome to Deep-Stego Secure, {uname}!</b> Your account is ready. Your unique Stego-ID is 
+    <b style="font-family:'JetBrains Mono';background:rgba(255,255,255,0.1);padding:3px 10px;border-radius:6px;color:#c084fc">{stego_id}</b>.
+    Share this ID with friends so they can send encrypted secret images directly to your inbox.
+    </div>""", unsafe_allow_html=True)
+    st.session_state["_just_registered"] = False
+
+# Professional Header Bar
 st.markdown(f"""<div class="user-bar">
 <div class="user-info">
 <div class="user-avatar">👤</div>
-<div><div class="user-name">{uname}</div>
-<div class="user-id">{stego_id}</div></div>
+<div>
+<div class="user-name">{uname}</div>
+<div class="user-id">STEGO-ID: <span style="color:#c084fc;font-weight:700;font-family:'JetBrains Mono'">{stego_id}</span></div>
 </div>
-<div class="shield-badge">🔐 AES-256 Protected</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<div class="shield-badge">🔐 AES-256-GCM Active</div>
+<div class="shield-badge" style="color:#60a5fa;border-color:rgba(96,165,250,0.3);background:rgba(96,165,250,0.08)">🧠 Dual U-Net Ready</div>
+</div>
 </div>""", unsafe_allow_html=True)
 
 c_spacer, c_logout = st.columns([6,1])
 with c_logout:
-    if st.button("🚪 Logout", use_container_width=True): do_logout()
+    if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
+        do_logout()
+
+# Calculate unread inbox count for dynamic tab badge
+inbox_items = get_inbox(uid)
+unread_count = sum(1 for m in inbox_items if not m.get("revealed", False))
+inbox_tab_title = f"📥 Inbox ({unread_count})" if unread_count > 0 else "📥 Inbox"
 
 tab_encode, tab_inbox, tab_decode, tab_sent, tab_profile = st.tabs([
-    "📤 Encode & Send", "📥 Inbox", "🔓 Decode", "📨 Sent", "👤 Profile"])
+    "📤 Encode & Send", inbox_tab_title, "🔓 Decode", "📨 Sent", "🎓 Defense & Profile"])
 
 # ═══════════════════ ENCODE & SEND ═══════════════════
 with tab_encode:
@@ -832,41 +916,84 @@ with tab_sent:
             <span class="lock-tag">🔑</span>
             </div>{nh}</div>""", unsafe_allow_html=True)
 
-# ═══════════════════ PROFILE ═══════════════════
+# ═══════════════════ DEFENSE & PROFILE ═══════════════════
 with tab_profile:
     st.markdown("""<div class="section-header">
-    <span class="icon">👤</span><h2>Profile & Security</h2></div>""", unsafe_allow_html=True)
+    <span class="icon">👤</span><h2>Account Profile & Technical Architecture</h2></div>""", unsafe_allow_html=True)
+    
     st.markdown(f"""<div class="profile-id">
-    <div class="id-lbl">YOUR STEGO-ID</div>
+    <div class="id-lbl">YOUR OFFICIAL STEGO-ID</div>
     <div class="id-val">{stego_id}</div>
-    <div class="id-lbl" style="margin-top:8px">Share this so others can send you encrypted images</div>
+    <div class="id-lbl" style="margin-top:8px">Share this ID so other users can search and send encrypted stego images to you</div>
     </div>""", unsafe_allow_html=True)
-    c1,c2=st.columns(2)
+    
+    c1, c2 = st.columns(2)
     with c1:
         st.markdown(f"""<div class="glass-card">
-        <div style="color:rgba(255,255,255,0.6);font-weight:700;margin-bottom:10px">📋 Account</div>
-        <div style="color:rgba(255,255,255,0.5);font-size:.9rem;line-height:2">
-        <b style="color:rgba(255,255,255,0.7)">Username:</b> {uname}<br>
-        <b style="color:rgba(255,255,255,0.7)">Stego-ID:</b> <code>{stego_id}</code><br>
-        <b style="color:rgba(255,255,255,0.7)">User ID:</b> <code>{uid[:12]}...</code>
+        <div style="color:#c084fc;font-weight:700;margin-bottom:12px;font-size:1.05rem">📋 Account Profile</div>
+        <div style="color:rgba(255,255,255,0.7);font-size:.92rem;line-height:2.2">
+        <b style="color:white">Username:</b> {uname}<br>
+        <b style="color:white">Stego-ID:</b> <code style="color:#a78bfa;font-size:1rem">{stego_id}</code><br>
+        <b style="color:white">User UUID:</b> <code style="font-size:0.8rem;color:rgba(255,255,255,0.5)">{uid}</code><br>
+        <b style="color:white">Status:</b> <span style="color:#34d399">● Authenticated & Active</span>
         </div></div>""", unsafe_allow_html=True)
     with c2:
         st.markdown("""<div class="glass-card">
-        <div style="color:rgba(255,255,255,0.6);font-weight:700;margin-bottom:10px">🔐 Security</div>
-        <div style="color:rgba(255,255,255,0.5);font-size:.9rem;line-height:2">
-        <b style="color:rgba(255,255,255,0.7)">Encryption:</b> AES-256-GCM<br>
-        <b style="color:rgba(255,255,255,0.7)">Key Derivation:</b> PBKDF2-SHA256<br>
-        <b style="color:rgba(255,255,255,0.7)">Protection:</b> Per-message passphrase
+        <div style="color:#60a5fa;font-weight:700;margin-bottom:12px;font-size:1.05rem">🔐 Cryptographic Engine</div>
+        <div style="color:rgba(255,255,255,0.7);font-size:.92rem;line-height:2.2">
+        <b style="color:white">Cipher:</b> AES-256-GCM (Authenticated AEAD)<br>
+        <b style="color:white">KDF:</b> PBKDF2-HMAC-SHA256 (480,000 rounds)<br>
+        <b style="color:white">Nonce / IV:</b> 96-bit cryptographically secure random<br>
+        <b style="color:white">Salt:</b> 128-bit random salt per message
         </div></div>""", unsafe_allow_html=True)
-    st.markdown("""<div class="info-banner">
-    🛡️ <b>How it works:</b> When you send an image, you set a secret passphrase. The stego image is encrypted
-    with AES-256-GCM using a key derived from your passphrase (PBKDF2, 480K iterations). The receiver must enter
-    the exact same passphrase to decrypt. Without it, the encrypted file is unreadable — even by us.
+
+    st.markdown("### 🎓 Project Architecture & Viva Defense Guide")
+    st.markdown("""<div class="info-banner" style="margin-bottom:1.5rem">
+    💡 <b>Examiner / Viva Quick Reference:</b> This section explains the exact engineering decisions and theoretical foundations of this system.
     </div>""", unsafe_allow_html=True)
+
+    d1, d2 = st.columns(2)
+    with d1:
+        st.markdown("""<div class="glass-card">
+        <div style="color:#a78bfa;font-weight:700;font-size:1rem;margin-bottom:8px">🧠 1. Dual U-Net Neural Architecture</div>
+        <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.6">
+        • <b>Hiding Network:</b> Takes 6 input channels (3 Cover + 3 Secret) and outputs a 3-channel Stego image.<br>
+        • <b>Reveal Network:</b> Takes the 3-channel Stego image and reconstructs the original Secret image.<br>
+        • <b>Skip Connections:</b> Preserves high-frequency spatial details (edges, textures) so human inspection cannot spot differences.
+        </p>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("""<div class="glass-card">
+        <div style="color:#34d399;font-weight:700;font-size:1rem;margin-bottom:8px">📊 2. Steganographic Metrics (PSNR & SSIM)</div>
+        <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.6">
+        • <b>PSNR (>30 dB):</b> Quantifies signal quality. High PSNR proves pixel noise is imperceptible to the human eye.<br>
+        • <b>SSIM (>0.95):</b> Evaluates luminance, contrast, and structure against the human visual cortex.<br>
+        • <b>Detection Resistance (%):</b> Weighted composite metric (70% SSIM + 30% PSNR) against statistical steganalysis.
+        </p>
+        </div>""", unsafe_allow_html=True)
+
+    with d2:
+        st.markdown("""<div class="glass-card">
+        <div style="color:#38bdf8;font-weight:700;font-size:1rem;margin-bottom:8px">🛡️ 3. Why AES-256 + Steganography?</div>
+        <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.6">
+        • Traditional neural steganography is vulnerable if an attacker obtains the network weights.<br>
+        • In <b>Deep-Stego Secure</b>, the stego payload is encrypted with <b>AES-256-GCM</b> before transmission.<br>
+        • Even if a hostile party extracts the image bits, without the passphrase it is mathematically undecryptable.
+        </p>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("""<div class="glass-card">
+        <div style="color:#fbbf24;font-weight:700;font-size:1rem;margin-bottom:8px">☁️ 4. Zero-Knowledge Cloud Storage</div>
+        <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.6">
+        • Images are stored in Supabase Storage with per-file encryption IVs and salt.<br>
+        • Passphrases are <b>never stored</b> in the database.<br>
+        • Only the intended recipient who possesses the agreed passphrase can derive the AES key and reveal the secret.
+        </p>
+        </div>""", unsafe_allow_html=True)
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown("""<div style="text-align:center;color:rgba(255,255,255,0.15);font-size:.78rem;padding:1rem 0;
+st.markdown("""<div style="text-align:center;color:rgba(255,255,255,0.25);font-size:.82rem;padding:1rem 0;
 font-family:'Inter',sans-serif;letter-spacing:.02em">
-Deep-Stego Secure · Dual U-Net · AES-256-GCM · PBKDF2 · PyTorch + Streamlit + Supabase
+Deep-Stego Secure · Dual U-Net Steganography · AES-256-GCM Cryptography · PyTorch + Streamlit + Supabase
 </div>""", unsafe_allow_html=True)
