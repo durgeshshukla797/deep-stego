@@ -7,216 +7,444 @@ from supabase import create_client
 from crypto_utils import generate_stego_id, encrypt_image_bytes, decrypt_image_bytes
 
 # ── Page config ───────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Deep-Stego Secure", page_icon="🔐", layout="wide",
+# ── Page config ───────────────────────────────────────────────────────────────
+st.set_page_config(page_title="Deep-Stego | Neural Steganography & Verification", layout="wide",
                    initial_sidebar_state="collapsed")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PREMIUM CSS
+# MINIMALIST MONOCHROME DESIGN SYSTEM
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
-html,body,[class*="css"]{font-family:'Inter',sans-serif;background:#07060b}
-#MainMenu,footer,header{visibility:hidden}
-.block-container{padding-top:1.5rem;padding-bottom:2rem;max-width:1200px}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* ─── Animated gradient bg ─── */
-.stApp{background:linear-gradient(135deg,#07060b 0%,#0d0b1a 40%,#12101f 60%,#07060b 100%)}
-
-/* ─── Hero ─── */
-.hero{
-    background:linear-gradient(160deg,rgba(99,60,255,0.12),rgba(45,20,120,0.15),rgba(0,210,190,0.08));
-    border:1px solid rgba(120,80,255,0.15);border-radius:28px;
-    padding:3.5rem 2rem 3rem;text-align:center;margin-bottom:2.5rem;
-    position:relative;overflow:hidden;
-    box-shadow:0 0 80px rgba(99,60,255,0.08),inset 0 1px 0 rgba(255,255,255,0.05);
+/* ─── Base Reset ─── */
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #050505;
+    color: #e5e5e5;
 }
-.hero::before{content:'';position:absolute;top:-100%;left:-50%;width:200%;height:300%;
-background:conic-gradient(from 180deg,transparent,rgba(99,60,255,0.04),transparent 40%);
-animation:hero-spin 12s linear infinite}
-@keyframes hero-spin{100%{transform:rotate(360deg)}}
-.hero::after{content:'';position:absolute;inset:0;border-radius:28px;
-background:radial-gradient(ellipse at 30% 0%,rgba(99,60,255,0.08),transparent 60%)}
-.hero h1{
-    font-size:3.2rem;font-weight:900;letter-spacing:-0.03em;
-    background:linear-gradient(135deg,#c084fc,#818cf8,#38bdf8,#34d399);background-size:200% 200%;
-    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-    animation:gradient-shift 6s ease infinite;margin-bottom:.5rem;position:relative;z-index:1;
+#MainMenu, footer, header { visibility: hidden; }
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 1140px;
 }
-@keyframes gradient-shift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-.hero .subtitle{color:rgba(255,255,255,0.5);font-size:1rem;font-weight:300;
-line-height:1.6;position:relative;z-index:1;max-width:600px;margin:0 auto}
-.badge-row{display:flex;justify-content:center;gap:12px;margin-top:1.8rem;
-flex-wrap:wrap;position:relative;z-index:1}
-.tech-badge{
-    background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-    border-radius:100px;padding:6px 16px;font-size:.78rem;font-weight:500;
-    color:rgba(255,255,255,0.6);backdrop-filter:blur(10px);
-    transition:all .3s;display:flex;align-items:center;gap:6px;
-}
-.tech-badge:hover{border-color:rgba(120,80,255,0.4);background:rgba(120,80,255,0.08)}
-.tech-badge .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
-.dot-purple{background:#a78bfa}.dot-blue{background:#60a5fa}.dot-green{background:#34d399}.dot-amber{background:#fbbf24}
-
-/* ─── Auth Container ─── */
-.auth-wrapper{
-    max-width:480px;margin:0 auto;
-    background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));
-    border:1px solid rgba(255,255,255,0.06);border-radius:24px;
-    padding:2.5rem 2rem;backdrop-filter:blur(20px);
-    box-shadow:0 25px 80px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.04);
-    position:relative;overflow:hidden;
-}
-.auth-wrapper::before{content:'';position:absolute;top:0;left:20%;right:20%;height:1px;
-background:linear-gradient(90deg,transparent,rgba(120,80,255,0.5),transparent)}
-.auth-title{font-size:1.5rem;font-weight:700;color:white;margin-bottom:.3rem;letter-spacing:-0.02em}
-.auth-sub{color:rgba(255,255,255,0.35);font-size:.88rem;margin-bottom:1.5rem;font-weight:300}
-.auth-divider{display:flex;align-items:center;gap:12px;margin:1.5rem 0;color:rgba(255,255,255,0.2);font-size:.8rem}
-.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.08)}
-.feature-pill{
-    display:inline-flex;align-items:center;gap:6px;
-    background:rgba(99,60,255,0.08);border:1px solid rgba(99,60,255,0.2);
-    border-radius:100px;padding:8px 16px;font-size:.8rem;
-    color:rgba(255,255,255,0.6);margin:4px;
+.stApp {
+    background-color: #050505;
 }
 
-/* ─── Glass Cards ─── */
-.glass-card{
-    background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);
-    border-radius:20px;padding:1.5rem;margin-bottom:1rem;
-    backdrop-filter:blur(10px);transition:all .3s;
-    box-shadow:0 4px 30px rgba(0,0,0,0.1);
+/* ─── Typography & Headings ─── */
+h1, h2, h3, h4, h5, h6 {
+    color: #ffffff!important;
+    font-weight: 700!important;
+    letter-spacing: -0.025em!important;
 }
-.glass-card:hover{border-color:rgba(120,80,255,0.2);background:rgba(255,255,255,0.03)}
 
-/* ─── User Bar ─── */
-.user-bar{
-    display:flex;align-items:center;justify-content:space-between;
-    background:linear-gradient(135deg,rgba(99,60,255,0.06),rgba(56,189,248,0.04));
-    border:1px solid rgba(255,255,255,0.06);border-radius:16px;
-    padding:12px 20px;margin-bottom:1.5rem;
+/* ─── Clean Monochrome Hero ─── */
+.hero {
+    background: #0a0a0a;
+    border: 1px solid #1f1f1f;
+    border-radius: 12px;
+    padding: 3rem 2rem 2.5rem;
+    text-align: center;
+    margin-bottom: 2rem;
 }
-.user-info{display:flex;align-items:center;gap:12px}
-.user-avatar{
-    width:42px;height:42px;border-radius:14px;
-    background:linear-gradient(135deg,#7c3aed,#2563eb);
-    display:flex;align-items:center;justify-content:center;font-size:1.2rem;
-    box-shadow:0 4px 15px rgba(99,60,255,0.3);
+.hero h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #ffffff!important;
+    margin-bottom: 0.5rem;
 }
-.user-name{font-weight:700;color:white;font-size:.95rem;letter-spacing:-0.01em}
-.user-id{font-size:.72rem;color:rgba(255,255,255,0.35);font-family:'JetBrains Mono',monospace}
-.shield-badge{
-    display:flex;align-items:center;gap:6px;
-    background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);
-    border-radius:100px;padding:5px 14px;font-size:.75rem;color:#34d399;font-weight:500;
+.hero .subtitle {
+    color: #888888;
+    font-size: 0.95rem;
+    font-weight: 400;
+    line-height: 1.6;
+    max-width: 640px;
+    margin: 0 auto;
+}
+.badge-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+.tech-badge {
+    background: #121212;
+    border: 1px solid #262626;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #a3a3a3;
+    letter-spacing: 0.02em;
+}
+
+/* ─── Auth Containers ─── */
+.auth-wrapper {
+    max-width: 440px;
+    margin: 0 auto;
+    background: #0a0a0a;
+    border: 1px solid #1f1f1f;
+    border-radius: 12px;
+    padding: 2.25rem 2rem;
+}
+.auth-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+}
+.auth-sub {
+    color: #737373;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+    font-weight: 400;
+    line-height: 1.5;
+}
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 1.25rem 0;
+    color: #525252;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.auth-divider::before, .auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #1f1f1f;
+}
+.feature-pill {
+    display: inline-block;
+    background: #121212;
+    border: 1px solid #262626;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    color: #a3a3a3;
+    margin: 3px;
+}
+
+/* ─── Monochrome Cards ─── */
+.glass-card {
+    background: #0c0c0c;
+    border: 1px solid #1f1f1f;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* ─── Top Dashboard Bar ─── */
+.user-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0a0a0a;
+    border: 1px solid #1f1f1f;
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 1.5rem;
+}
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: #1c1c1c;
+    border: 1px solid #2e2e2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+.user-name {
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 0.95rem;
+}
+.user-id {
+    font-size: 0.75rem;
+    color: #737373;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+}
+.shield-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #121212;
+    border: 1px solid #262626;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 0.75rem;
+    color: #e5e5e5;
+    font-weight: 500;
 }
 
 /* ─── Section Headers ─── */
-.section-header{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;
-padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06)}
-.section-header h2{font-size:1.3rem;font-weight:700;color:white;margin:0;letter-spacing:-0.02em}
-.section-header .icon{font-size:1.4rem}
+.section-header {
+    margin-bottom: 1.25rem;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1a1a1a;
+}
+.section-header h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+}
 
 /* ─── Message Cards ─── */
-.msg-card{
-    background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);
-    border-radius:16px;padding:16px 20px;margin-bottom:10px;transition:all .3s;
+.msg-card {
+    background: #0c0c0c;
+    border: 1px solid #1f1f1f;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
 }
-.msg-card:hover{border-color:rgba(120,80,255,0.2);transform:translateY(-1px);
-box-shadow:0 8px 30px rgba(0,0,0,0.2)}
-.msg-card.unread{border-left:3px solid #a78bfa}
-.msg-card.read{border-left:3px solid rgba(255,255,255,0.08);opacity:.7}
-.msg-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.sender-tag{font-size:.85rem;font-weight:600;color:#818cf8}
-.date-tag{font-size:.78rem;color:rgba(255,255,255,0.3)}
-.status-tag{font-size:.7rem;padding:3px 10px;border-radius:100px;font-weight:600;letter-spacing:.02em}
-.status-unread{background:rgba(167,139,250,0.15);color:#a78bfa}
-.status-read{background:rgba(52,211,153,0.12);color:#34d399}
-.lock-tag{background:rgba(251,191,36,0.12);color:#fbbf24;font-size:.7rem;
-padding:3px 10px;border-radius:100px;font-weight:600}
+.msg-card.unread {
+    border-left: 3px solid #ffffff;
+}
+.msg-card.read {
+    border-left: 3px solid #262626;
+    opacity: 0.75;
+}
+.msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.sender-tag {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+.date-tag {
+    font-size: 0.75rem;
+    color: #666666;
+}
+.status-tag {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+.status-unread {
+    background: #262626;
+    color: #ffffff;
+}
+.status-read {
+    background: #171717;
+    color: #737373;
+    border: 1px solid #262626;
+}
+.lock-tag {
+    background: #141414;
+    color: #888888;
+    border: 1px solid #262626;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
 
-/* ─── Metrics ─── */
-.metric-row{display:flex;gap:12px;margin:1rem 0;flex-wrap:wrap}
-.metric-card{
-    flex:1;min-width:100px;background:rgba(255,255,255,0.02);
-    border:1px solid rgba(255,255,255,0.06);border-radius:16px;
-    padding:16px;text-align:center;transition:all .3s;
+/* ─── Metrics Display ─── */
+.metric-row {
+    display: flex;
+    gap: 10px;
+    margin: 1rem 0;
+    flex-wrap: wrap;
 }
-.metric-card:hover{border-color:rgba(120,80,255,0.2)}
-.metric-val{font-size:1.6rem;font-weight:800;color:#a78bfa;letter-spacing:-0.02em}
-.metric-lbl{font-size:.68rem;color:rgba(255,255,255,0.35);margin-top:4px;
-text-transform:uppercase;letter-spacing:.08em;font-weight:600}
-.img-label{text-align:center;font-size:.75rem;color:rgba(255,255,255,0.4);
-margin-top:6px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.metric-card {
+    flex: 1;
+    min-width: 110px;
+    background: #0a0a0a;
+    border: 1px solid #1f1f1f;
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+}
+.metric-val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.02em;
+}
+.metric-lbl {
+    font-size: 0.7rem;
+    color: #737373;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+}
+.img-label {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #737373;
+    margin-top: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
 
-/* ─── Banners ─── */
-.success-banner{
-    background:linear-gradient(135deg,rgba(52,211,153,0.1),rgba(16,185,129,0.06));
-    border:1px solid rgba(52,211,153,0.25);border-radius:16px;
-    padding:14px 20px;color:#34d399;font-weight:500;
-    margin:1rem 0;display:flex;align-items:center;gap:10px;
+/* ─── Notification Banners ─── */
+.success-banner {
+    background: #0c0c0c;
+    border: 1px solid #262626;
+    border-left: 3px solid #ffffff;
+    border-radius: 6px;
+    padding: 12px 18px;
+    color: #e5e5e5;
+    font-size: 0.88rem;
+    margin: 1rem 0;
 }
-.error-banner{
-    background:linear-gradient(135deg,rgba(239,68,68,0.1),rgba(220,38,38,0.06));
-    border:1px solid rgba(239,68,68,0.25);border-radius:16px;
-    padding:14px 20px;color:#ef4444;font-weight:500;margin:1rem 0;
+.error-banner {
+    background: #0f0a0a;
+    border: 1px solid #2e1a1a;
+    border-left: 3px solid #dc2626;
+    border-radius: 6px;
+    padding: 12px 18px;
+    color: #f87171;
+    font-size: 0.88rem;
+    margin: 1rem 0;
 }
-.info-banner{
-    background:rgba(99,60,255,0.06);border:1px solid rgba(99,60,255,0.15);
-    border-radius:16px;padding:14px 20px;
-    color:rgba(255,255,255,0.6);font-size:.88rem;margin:1rem 0;line-height:1.6;
+.info-banner {
+    background: #0c0c0c;
+    border: 1px solid #1f1f1f;
+    border-radius: 6px;
+    padding: 12px 18px;
+    color: #888888;
+    font-size: 0.85rem;
+    margin: 0.75rem 0;
+    line-height: 1.55;
 }
-.profile-id{
-    background:linear-gradient(135deg,rgba(99,60,255,0.08),rgba(56,189,248,0.06));
-    border:1px solid rgba(99,60,255,0.2);border-radius:20px;
-    padding:24px;text-align:center;margin:1rem 0;
-    box-shadow:0 0 60px rgba(99,60,255,0.06);
+.profile-id {
+    background: #0a0a0a;
+    border: 1px solid #1f1f1f;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    margin: 1rem 0;
 }
-.profile-id .id-val{font-size:2.2rem;font-weight:900;color:#a78bfa;
-font-family:'JetBrains Mono',monospace;letter-spacing:.2em}
-.profile-id .id-lbl{font-size:.72rem;color:rgba(255,255,255,0.35);margin-top:6px;
-text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+.profile-id .id-val {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.15em;
+}
+.profile-id .id-lbl {
+    font-size: 0.7rem;
+    color: #666666;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+}
 
 /* ─── Buttons ─── */
-div.stButton>button{
-    border-radius:12px!important;font-weight:600!important;
-    font-family:'Inter',sans-serif!important;transition:all .25s!important;
-    letter-spacing:.01em!important;
+div.stButton > button {
+    border-radius: 6px!important;
+    font-weight: 500!important;
+    font-size: 0.88rem!important;
+    font-family: 'Inter', sans-serif!important;
+    transition: all 0.15s ease!important;
+    padding: 8px 16px!important;
+    border: 1px solid #262626!important;
+    background: #111111!important;
+    color: #e5e5e5!important;
 }
-div.stButton>button:hover{transform:translateY(-2px)!important;
-box-shadow:0 8px 25px rgba(99,60,255,0.25)!important}
-div.stButton>button[kind="primary"]{
-    background:linear-gradient(135deg,#7c3aed,#6366f1,#2563eb)!important;
-    border:none!important;box-shadow:0 4px 15px rgba(99,60,255,0.3)!important;
+div.stButton > button:hover {
+    background: #1c1c1c!important;
+    border-color: #383838!important;
+    color: #ffffff!important;
+    transform: none!important;
+    box-shadow: none!important;
+}
+div.stButton > button[kind="primary"] {
+    background: #ffffff!important;
+    color: #000000!important;
+    border: 1px solid #ffffff!important;
+    font-weight: 600!important;
+}
+div.stButton > button[kind="primary"]:hover {
+    background: #e0e0e0!important;
+    color: #000000!important;
+    border-color: #e0e0e0!important;
 }
 
 /* ─── Tabs ─── */
-.stTabs [data-baseweb="tab-list"]{gap:4px;background:rgba(255,255,255,0.02);
-border-radius:14px;padding:4px;border:1px solid rgba(255,255,255,0.05)}
-.stTabs [data-baseweb="tab"]{border-radius:10px!important;padding:10px 24px!important;
-font-weight:500!important;font-size:.88rem!important;transition:all .2s!important}
-.stTabs [aria-selected="true"]{background:rgba(99,60,255,0.15)!important;
-color:#c084fc!important;font-weight:600!important}
-.stTabs [data-baseweb="tab-highlight"]{background:transparent!important}
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+    background: #0a0a0a;
+    border-radius: 8px;
+    padding: 3px;
+    border: 1px solid #1a1a1a;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 6px!important;
+    padding: 8px 18px!important;
+    font-weight: 500!important;
+    font-size: 0.84rem!important;
+    color: #737373!important;
+    transition: all 0.15s!important;
+}
+.stTabs [aria-selected="true"] {
+    background: #171717!important;
+    color: #ffffff!important;
+    border: 1px solid #262626!important;
+    font-weight: 600!important;
+}
+.stTabs [data-baseweb="tab-highlight"] {
+    background: transparent!important;
+}
 
-/* ─── Inputs ─── */
-.stTextInput>div>div>input,.stTextArea>div>div>textarea{
-    background:rgba(255,255,255,0.03)!important;border:1px solid rgba(255,255,255,0.08)!important;
-    border-radius:12px!important;color:white!important;font-family:'Inter',sans-serif!important;
-    transition:all .2s!important;
+/* ─── Form Inputs ─── */
+.stTextInput > div > div > input, .stTextArea > div > div > textarea {
+    background: #0a0a0a!important;
+    border: 1px solid #242424!important;
+    border-radius: 6px!important;
+    color: #ffffff!important;
+    font-family: 'Inter', sans-serif!important;
+    font-size: 0.88rem!important;
 }
-.stTextInput>div>div>input:focus,.stTextArea>div>div>textarea:focus{
-    border-color:rgba(99,60,255,0.5)!important;box-shadow:0 0 20px rgba(99,60,255,0.1)!important;
+.stTextInput > div > div > input:focus, .stTextArea > div > div > textarea:focus {
+    border-color: #ffffff!important;
+    box-shadow: none!important;
 }
-.stSelectbox>div>div{background:rgba(255,255,255,0.03)!important;
-border:1px solid rgba(255,255,255,0.08)!important;border-radius:12px!important}
-.stFileUploader{border:2px dashed rgba(255,255,255,0.08)!important;
-border-radius:16px!important;background:rgba(255,255,255,0.01)!important}
-.stCheckbox label span{color:rgba(255,255,255,0.7)!important}
+.stSelectbox > div > div {
+    background: #0a0a0a!important;
+    border: 1px solid #242424!important;
+    border-radius: 6px!important;
+}
+.stFileUploader {
+    border: 1px dashed #262626!important;
+    border-radius: 8px!important;
+    background: #080808!important;
+}
 
 /* ─── Scrollbar ─── */
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(99,60,255,0.3);border-radius:3px}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #050505; }
+::-webkit-scrollbar-thumb { background: #222222; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #333333; }
 </style>""", unsafe_allow_html=True)
 
 # ── Supabase ──────────────────────────────────────────────────────────────────
@@ -305,8 +533,8 @@ def calc_ssim(a,b):
 def detection_score(p,s):
     # SSIM weighted 70% (perceptual), PSNR weighted 30%
     # SSIM 0.99+ is near-perfect; PSNR >20 is acceptable for steganography
-    ssim_score = min(max((s - 0.85) / 0.15, 0), 1)  # 0.85→0%, 1.0→100%
-    psnr_score = min(max((p - 18) / 22, 0), 1)       # 18→0%, 40→100%
+    ssim_score = min(max((s - 0.85) / 0.15, 0), 1)  # 0.85 -> 0%, 1.0 -> 100%
+    psnr_score = min(max((p - 18) / 22, 0), 1)       # 18 -> 0%, 40 -> 100%
     return round(ssim_score * 70 + psnr_score * 30, 1)
 
 def pixel_diff_heatmap(a,b):
@@ -326,7 +554,7 @@ def search_users(q, my_id):
             .neq("id", my_id).limit(10).execute()
         return r.data or []
     except Exception as e:
-        st.toast(f"Search error: {e}", icon="⚠️")
+        st.toast(f"Search error: {e}")
         return []
 
 def upload_stego(data, fn):
@@ -451,24 +679,25 @@ for k in ["user","profile","stego_result"]:
     if k not in st.session_state: st.session_state[k]=None
 
 # ══════════════════════════════════════════════════════════════════════════════
-# HERO & LANDING (Only shown when not logged in)
+# HERO & LANDING (Shown only when unauthenticated)
 # ══════════════════════════════════════════════════════════════════════════════
 if st.session_state.user is None:
     st.markdown("""<div class="hero">
-    <h1>🔐 Deep-Stego Secure</h1>
-    <p class="subtitle">Military-grade neural image steganography with AES-256-GCM encryption.<br>
-    Hide secrets inside ordinary images — invisible, imperceptible, and mathematically unbreakable.</p>
+    <h1>Deep-Stego</h1>
+    <p class="subtitle">Neural Image Steganography with AES-256-GCM Payload Verification.<br>
+    Synthesizes imperceptible carrier-payload embeddings with authenticated encryption.</p>
     <div class="badge-row">
-    <div class="tech-badge"><span class="dot dot-purple"></span>Dual U-Net</div>
-    <div class="tech-badge"><span class="dot dot-blue"></span>AES-256-GCM</div>
-    <div class="tech-badge"><span class="dot dot-green"></span>128×128 HD</div>
-    <div class="tech-badge"><span class="dot dot-amber"></span>SSIM &gt;0.92</div>
+    <div class="tech-badge">Dual U-Net</div>
+    <div class="tech-badge">AES-256-GCM</div>
+    <div class="tech-badge">128x128 Resolution</div>
+    <div class="tech-badge">SSIM &gt; 0.92</div>
+    <div class="tech-badge">PBKDF2-SHA256</div>
     </div></div>""", unsafe_allow_html=True)
 
-with st.spinner("Loading AI model..."):
+with st.spinner("Initializing neural network..."):
     hiding_net, reveal_net, model_error = load_models()
 if model_error:
-    st.error(f"⚠️ {model_error}"); st.stop()
+    st.error(f"Model initialization error: {model_error}"); st.stop()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # AUTHENTICATION
@@ -476,67 +705,65 @@ if model_error:
 if st.session_state.user is None:
     col_l, col_center, col_r = st.columns([1, 2, 1])
     with col_center:
-        tab_login, tab_reg = st.tabs(["🔑  Sign In", "✨  Create Account"])
+        tab_login, tab_reg = st.tabs(["Sign In", "Create Account"])
 
         with tab_login:
-            st.markdown('<div class="auth-title">Welcome Back</div>', unsafe_allow_html=True)
-            st.markdown('<div class="auth-sub">Sign in to access your encrypted stego inbox and decoder</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-title">Account Access</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Authenticate to access transmission inbox and neural decoder.</div>', unsafe_allow_html=True)
             
             with st.form("login_form", clear_on_submit=False):
-                l_email = st.text_input("Email", placeholder="you@email.com", key="auth_login_email")
-                l_pass = st.text_input("Password", type="password", placeholder="Enter your password", key="auth_login_pass")
+                l_email = st.text_input("Email", placeholder="user@domain.com", key="auth_login_email")
+                l_pass = st.text_input("Password", type="password", placeholder="Enter password", key="auth_login_pass")
                 submit_login = st.form_submit_button("Sign In", type="primary", use_container_width=True)
                 
                 if submit_login:
                     if not l_email or not l_pass:
-                        st.warning("Please provide both email and password.")
+                        st.warning("Both email and password are required.")
                     else:
                         ok, err = do_login(l_email, l_pass)
                         if ok:
-                            # Clear auth inputs immediately so fields don't linger
                             for k in ["auth_login_email", "auth_login_pass", "auth_reg_user", "auth_reg_email", "auth_reg_pass"]:
                                 st.session_state.pop(k, None)
                             st.rerun()
                         else:
-                            st.error(err or "Invalid credentials. Please verify your email and password.")
+                            st.error(err or "Authentication failed. Please verify credentials.")
 
-            st.markdown('<div class="auth-divider">Secured with Supabase Authentication</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-divider">Supabase Cloud Authentication</div>', unsafe_allow_html=True)
             st.markdown("""<div style="display:flex;justify-content:center;flex-wrap:wrap">
-            <div class="feature-pill">🔐 E2E Encrypted</div>
-            <div class="feature-pill">🧠 AI Powered</div>
-            <div class="feature-pill">👁️ Invisible Payload</div>
+            <div class="feature-pill">AES-256-GCM Encrypted</div>
+            <div class="feature-pill">Dual U-Net Inference</div>
+            <div class="feature-pill">Authenticated Routing</div>
             </div>""", unsafe_allow_html=True)
 
         with tab_reg:
-            st.markdown('<div class="auth-title">Join Deep-Stego Secure</div>', unsafe_allow_html=True)
-            st.markdown('<div class="auth-sub">Create your account to get an instant Stego-ID and auto-login</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-title">User Registration</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-sub">Register account to receive an assigned Stego-ID for transmission routing.</div>', unsafe_allow_html=True)
             
             with st.form("register_form", clear_on_submit=False):
                 r_user = st.text_input("Username", placeholder="e.g. duggu", key="auth_reg_user")
-                r_email = st.text_input("Email", placeholder="you@email.com", key="auth_reg_email")
+                r_email = st.text_input("Email", placeholder="user@domain.com", key="auth_reg_email")
                 r_pass = st.text_input("Password", type="password", placeholder="Minimum 6 characters", key="auth_reg_pass")
-                st.markdown("""<div class="info-banner" style="font-size:0.83rem">
-                🛡️ You will automatically receive a unique <b>Stego-ID</b> for sending & receiving secret images.
+                st.markdown("""<div class="info-banner" style="font-size:0.8rem">
+                A system-generated Stego-ID will be provisioned for peer-to-peer transmission routing.
                 </div>""", unsafe_allow_html=True)
-                submit_reg = st.form_submit_button("Create Account & Log In", type="primary", use_container_width=True)
+                submit_reg = st.form_submit_button("Register & Authenticate", type="primary", use_container_width=True)
                 
                 if submit_reg:
                     if not (r_user and r_email and r_pass):
-                        st.warning("Please fill in all fields.")
+                        st.warning("All fields are mandatory.")
                     elif len(r_pass) < 6:
-                        st.error("Password must be at least 6 characters.")
+                        st.error("Password length must be at least 6 characters.")
                     else:
-                        with st.spinner("Creating account & logging you in..."):
+                        with st.spinner("Provisioning account..."):
                             ok, sid, err, auto_logged = do_register(r_user, r_email, r_pass)
                             if ok:
-                                # Clear input fields
                                 for k in ["auth_login_email", "auth_login_pass", "auth_reg_user", "auth_reg_email", "auth_reg_pass"]:
                                     st.session_state.pop(k, None)
                                 if auto_logged:
                                     st.session_state["_just_registered"] = True
                                     st.rerun()
                                 else:
-                                    st.success(f"✅ Account created! Your Stego-ID is {sid}. You can now sign in.")
+                                    st.success(f"Account registered. Assigned Stego-ID: {sid}. Proceed to Sign In.")
                             else:
                                 st.error(err or "Registration failed.")
 
@@ -547,103 +774,98 @@ if st.session_state.user is None:
 # ══════════════════════════════════════════════════════════════════════════════
 profile = st.session_state.profile
 uid = profile["id"]; uname = profile["username"]; stego_id = profile.get("stego_id","N/A")
+avatar_initial = (uname[:1] if uname else "U").upper()
 
-# Welcoming banner on first signup
+# Banner upon first registration
 if st.session_state.get("_just_registered"):
-    st.balloons()
-    st.markdown(f"""<div class="success-banner" style="font-size:1rem;margin-bottom:1.5rem">
-    🎉 <b>Welcome to Deep-Stego Secure, {uname}!</b> Your account is ready. Your unique Stego-ID is 
-    <b style="font-family:'JetBrains Mono';background:rgba(255,255,255,0.1);padding:3px 10px;border-radius:6px;color:#c084fc">{stego_id}</b>.
-    Share this ID with friends so they can send encrypted secret images directly to your inbox.
+    st.markdown(f"""<div class="success-banner">
+    Account successfully provisioned. User: <b>{uname}</b> | Assigned Stego-ID: 
+    <code style="font-family:'JetBrains Mono';background:#171717;padding:2px 8px;border-radius:4px;color:#ffffff">{stego_id}</code>.
     </div>""", unsafe_allow_html=True)
     st.session_state["_just_registered"] = False
 
 # Professional Header Bar
 st.markdown(f"""<div class="user-bar">
 <div class="user-info">
-<div class="user-avatar">👤</div>
+<div class="user-avatar">{avatar_initial}</div>
 <div>
 <div class="user-name">{uname}</div>
-<div class="user-id">STEGO-ID: <span style="color:#c084fc;font-weight:700;font-family:'JetBrains Mono'">{stego_id}</span></div>
+<div class="user-id">STEGO-ID: <span style="color:#ffffff;font-weight:600;font-family:'JetBrains Mono'">{stego_id}</span></div>
 </div>
 </div>
-<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-<div class="shield-badge">🔐 AES-256-GCM Active</div>
-<div class="shield-badge" style="color:#60a5fa;border-color:rgba(96,165,250,0.3);background:rgba(96,165,250,0.08)">🧠 Dual U-Net Ready</div>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<div class="shield-badge">AES-256-GCM Active</div>
+<div class="shield-badge">Dual U-Net Online</div>
 </div>
 </div>""", unsafe_allow_html=True)
 
 c_spacer, c_logout = st.columns([6,1])
 with c_logout:
-    if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
+    if st.button("Sign Out", use_container_width=True, key="logout_btn"):
         do_logout()
 
-# Calculate unread inbox count for dynamic tab badge
+# Calculate unread inbox count for clean badge
 inbox_items = get_inbox(uid)
 unread_count = sum(1 for m in inbox_items if not m.get("revealed", False))
-inbox_tab_title = f"📥 Inbox ({unread_count})" if unread_count > 0 else "📥 Inbox"
+inbox_tab_title = f"Inbox [{unread_count}]" if unread_count > 0 else "Inbox"
 
 tab_encode, tab_inbox, tab_decode, tab_sent, tab_profile = st.tabs([
-    "📤 Encode & Send", inbox_tab_title, "🔓 Decode", "📨 Sent", "🎓 Defense & Profile"])
+    "Encode & Transmit", inbox_tab_title, "Decode", "Sent History", "System Architecture"])
 
-# ═══════════════════ ENCODE & SEND ═══════════════════
+# ═══════════════════ ENCODE & TRANSMIT ═══════════════════
 with tab_encode:
     st.markdown("""<div class="section-header">
-    <span class="icon">📤</span><h2>Encode & Send Hidden Image</h2></div>""", unsafe_allow_html=True)
+    <h2>Neural Steganographic Synthesis & Encryption</h2></div>""", unsafe_allow_html=True)
 
     # ── STEP 1: Upload Images ─────────────────────────────────────────────
-    st.markdown("#### 🖼️ Step 1 — Upload Images")
+    st.markdown("#### 1. Image Inputs")
     cc, cs = st.columns(2)
     with cc:
         st.markdown("""<div class="glass-card">
-        <div style="color:rgba(255,255,255,0.7);font-weight:600;margin-bottom:8px">
-        🖼️ Cover Image <span style="color:rgba(255,255,255,0.25);font-weight:400;font-size:.85rem">
-        — what everyone sees</span></div>""", unsafe_allow_html=True)
+        <div style="color:#ffffff;font-weight:600;font-size:0.88rem;margin-bottom:8px">
+        Cover Image <span style="color:#737373;font-weight:400;font-size:0.8rem">— Carrier Media</span></div>""", unsafe_allow_html=True)
         cover_f = st.file_uploader("", type=["jpg","jpeg","png"], key="cover", label_visibility="collapsed")
         if cover_f:
             st.image(cover_f, use_container_width=True)
-            st.markdown('<div class="img-label">Cover</div>', unsafe_allow_html=True)
+            st.markdown('<div class="img-label">Cover (Carrier)</div>', unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
     with cs:
         st.markdown("""<div class="glass-card">
-        <div style="color:rgba(255,255,255,0.7);font-weight:600;margin-bottom:8px">
-        🤫 Secret Image <span style="color:rgba(255,255,255,0.25);font-weight:400;font-size:.85rem">
-        — what gets hidden</span></div>""", unsafe_allow_html=True)
+        <div style="color:#ffffff;font-weight:600;font-size:0.88rem;margin-bottom:8px">
+        Secret Image <span style="color:#737373;font-weight:400;font-size:0.8rem">— Payload to Embed</span></div>""", unsafe_allow_html=True)
         secret_f = st.file_uploader("", type=["jpg","jpeg","png"], key="secret", label_visibility="collapsed")
         if secret_f:
             st.image(secret_f, use_container_width=True)
-            st.markdown('<div class="img-label">Secret</div>', unsafe_allow_html=True)
+            st.markdown('<div class="img-label">Secret (Payload)</div>', unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ── STEP 2: Set Passphrase ────────────────────────────────────────────
-    st.markdown("#### 🔒 Step 2 — Set Secret Passphrase")
+    st.markdown("#### 2. Cryptographic Key Derivation")
 
-    # Check if passphrase already set in session
     pp_set = st.session_state.get("_passphrase_confirmed", False)
 
     if not pp_set:
         pc1, pc2 = st.columns([3, 1])
         with pc1:
             pp_val = st.text_input("Secret passphrase", type="password", key="pp",
-                                    placeholder="Enter a strong passphrase...", label_visibility="collapsed")
+                                    placeholder="Enter passphrase for PBKDF2 key derivation...", label_visibility="collapsed")
         with pc2:
-            if st.button("🔒 Set Key", use_container_width=True, type="primary"):
+            if st.button("Configure Key", use_container_width=True, type="primary"):
                 if pp_val and len(pp_val) >= 3:
                     st.session_state["_passphrase_confirmed"] = True
                     st.session_state["_passphrase_value"] = pp_val
                     st.rerun()
                 else:
-                    st.error("Min 3 characters.")
+                    st.error("Passphrase must contain at least 3 characters.")
         st.markdown("""<div class="info-banner">
-        🔑 <b>The receiver must know this passphrase</b> to decrypt and reveal the hidden image.
-        Share it through a separate secure channel (in-person, phone call, etc).
+        The recipient must use the identical passphrase to derive the 256-bit AES key and decrypt the payload.
         </div>""", unsafe_allow_html=True)
     else:
         pp_val = st.session_state.get("_passphrase_value", "")
         st.markdown(f"""<div class="success-banner">
-        🔐 Passphrase set! <b>({len(pp_val)} characters)</b> — ready to generate.
+        Passphrase configured ({len(pp_val)} characters). Ready for neural synthesis.
         </div>""", unsafe_allow_html=True)
-        if st.button("🔄 Change Passphrase"):
+        if st.button("Reset Passphrase"):
             st.session_state["_passphrase_confirmed"] = False
             st.session_state["_passphrase_value"] = ""
             st.rerun()
@@ -652,8 +874,8 @@ with tab_encode:
     passphrase = st.session_state.get("_passphrase_value", "")
     if cover_f and secret_f and pp_set:
         st.markdown("---")
-        if st.button("🧠  Generate Stego Image", type="primary", use_container_width=True):
-            with st.spinner("🧠 Neural network encoding + AES-256 encrypting..."):
+        if st.button("Synthesize Stego Image", type="primary", use_container_width=True):
+            with st.spinner("Executing Dual U-Net forward pass and AES-256-GCM encryption..."):
                 try:
                     ci=Image.open(cover_f); si=Image.open(secret_f)
                     ct_t,st_t=preprocess(ci),preprocess(si)
@@ -669,10 +891,10 @@ with tab_encode:
                         "bytes":stego_bytes,"enc":enc,"sent":False
                     }
                     st.rerun()
-                except Exception as e: st.error(f"Error: {e}")
+                except Exception as e: st.error(f"Execution error: {e}")
     elif cover_f and secret_f and not pp_set:
         st.markdown("---")
-        st.warning("⬆️ Set your passphrase above first, then the Generate button will appear.")
+        st.warning("Configure cryptographic passphrase above to enable neural synthesis.")
 
     # ── RESULTS + SEND ────────────────────────────────────────────────────
     if st.session_state.stego_result:
@@ -681,45 +903,45 @@ with tab_encode:
 
         if sent:
             st.markdown(f"""<div class="success-banner">
-            ✅ Encrypted & sent to <b>{r['receiver']}</b>! Only they can decrypt it with the passphrase.</div>""",
-            unsafe_allow_html=True)
+            Transmission completed and dispatched to <b>{r['receiver']}</b>.
+            </div>""", unsafe_allow_html=True)
         else:
             st.markdown("""<div class="success-banner">
-            ✅ Stego image generated & encrypted! You can download it or send it to a user below.</div>""",
-            unsafe_allow_html=True)
+            Synthesis completed. Stego image generated and AES-256-GCM payload verified.
+            </div>""", unsafe_allow_html=True)
 
         st.markdown(f"""<div class="metric-row">
         <div class="metric-card"><div class="metric-val">{r['psnr']} dB</div><div class="metric-lbl">PSNR</div></div>
         <div class="metric-card"><div class="metric-val">{r['ssim']}</div><div class="metric-lbl">SSIM</div></div>
         <div class="metric-card"><div class="metric-val">{r['dr']}%</div><div class="metric-lbl">Detection Resistance</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:#34d399">AES-256</div><div class="metric-lbl">Encryption</div></div>
+        <div class="metric-card"><div class="metric-val">AES-256</div><div class="metric-lbl">Cipher Mode</div></div>
         </div>""", unsafe_allow_html=True)
 
-        st.markdown("#### Result Comparison")
+        st.markdown("#### Verification Analysis")
         c1,c2,c3=st.columns(3)
-        with c1: st.image(r["cover"],use_container_width=True); st.markdown('<div class="img-label">Original Cover</div>',unsafe_allow_html=True)
-        with c2: st.image(r["stego"],use_container_width=True); st.markdown('<div class="img-label">🔐 Stego Image</div>',unsafe_allow_html=True)
-        with c3: st.image(pixel_diff_heatmap(np.array(r["cover"]),np.array(r["stego"])),use_container_width=True); st.markdown('<div class="img-label">🔥 Pixel Diff Heatmap</div>',unsafe_allow_html=True)
+        with c1: st.image(r["cover"],use_container_width=True); st.markdown('<div class="img-label">Cover (Carrier)</div>',unsafe_allow_html=True)
+        with c2: st.image(r["stego"],use_container_width=True); st.markdown('<div class="img-label">Stego Output</div>',unsafe_allow_html=True)
+        with c3: st.image(pixel_diff_heatmap(np.array(r["cover"]),np.array(r["stego"])),use_container_width=True); st.markdown('<div class="img-label">Pixel Residual Heatmap</div>',unsafe_allow_html=True)
 
-        st.download_button("⬇️ Download Stego Image",data=r["bytes"],file_name="stego.png",mime="image/png")
+        st.download_button("Download Stego Image", data=r["bytes"], file_name="stego.png", mime="image/png")
 
-        # ── STEP 3 (Optional): Send to a recipient ────────────────────────
+        # ── Dispatch transmission ──────────────────────────────────────────
         if not sent:
             st.markdown("---")
-            st.markdown("#### 📨 Step 3 — Send to Recipient")
-            st.markdown("""<div class="info-banner" style="margin-bottom:1rem">
-            Search for a user by their <b>username</b> or <b>Stego-ID</b> to send the encrypted stego image directly to their inbox.
+            st.markdown("#### 3. Dispatch Transmission")
+            st.markdown("""<div class="info-banner">
+            Query destination user by Username or Stego-ID to transmit the encrypted stego payload.
             </div>""", unsafe_allow_html=True)
 
             sc1, sc2 = st.columns([3, 1])
             with sc1:
-                sq = st.text_input("🔍 Enter username or Stego-ID", placeholder="e.g. Ram or DSS-7X4K2M", key="srch", label_visibility="collapsed")
+                sq = st.text_input("Enter username or Stego-ID", placeholder="e.g. duggu or DSS-19F569", key="srch", label_visibility="collapsed")
             with sc2:
-                search_btn = st.button("🔍 Search", use_container_width=True, key="search_btn")
+                search_btn = st.button("Search Users", use_container_width=True, key="search_btn")
 
             chosen = None
             if (sq and len(sq) >= 1) and search_btn:
-                with st.spinner("Searching users..."):
+                with st.spinner("Querying directory..."):
                     st.session_state["_search_results"] = search_users(sq, uid)
 
             search_results = st.session_state.get("_search_results", [])
@@ -727,35 +949,30 @@ with tab_encode:
                 for u in search_results:
                     rc1, rc2 = st.columns([4, 1])
                     with rc1:
-                        st.markdown(f"""<div class="glass-card" style="padding:12px 16px;margin-bottom:8px">
+                        st.markdown(f"""<div class="glass-card" style="padding:10px 14px;margin-bottom:6px">
                         <div style="display:flex;align-items:center;gap:12px">
-                        <div style="width:36px;height:36px;border-radius:10px;
-                        background:linear-gradient(135deg,#7c3aed,#2563eb);
-                        display:flex;align-items:center;justify-content:center;font-size:1rem">👤</div>
                         <div>
-                        <div style="font-weight:600;color:white;font-size:.92rem">{u['username']}</div>
-                        <div style="font-size:.72rem;color:rgba(255,255,255,0.35);
-                        font-family:'JetBrains Mono',monospace">{u['stego_id']}</div>
+                        <div style="font-weight:600;color:white;font-size:0.9rem">{u['username']}</div>
+                        <div style="font-size:0.75rem;color:#737373;font-family:'JetBrains Mono',monospace">{u['stego_id']}</div>
                         </div></div></div>""", unsafe_allow_html=True)
                     with rc2:
-                        if st.button(f"📨 Send", key=f"send_{u['id']}", use_container_width=True):
+                        if st.button(f"Transmit", key=f"send_{u['id']}", use_container_width=True):
                             chosen = u
 
                 if chosen is None:
-                    # Check if any send button was pressed
                     for u in search_results:
                         if st.session_state.get(f"send_{u['id']}"):
                             chosen = u
                             break
             elif sq and search_btn:
                 st.markdown("""<div class="info-banner">
-                😕 No users found. Double-check the username or Stego-ID.
+                No matching user found in directory.
                 </div>""", unsafe_allow_html=True)
 
-            note = st.text_input("📝 Note (optional)", placeholder="e.g. Check this out!", key="note")
+            note = st.text_input("Transmission metadata note (optional)", placeholder="e.g. Project deliverable verification", key="note")
 
             if chosen:
-                with st.spinner(f"Uploading & sending to {chosen['username']}..."):
+                with st.spinner(f"Encrypting and transmitting to {chosen['username']}..."):
                     try:
                         enc = r["enc"]
                         fn = f"{uid}/{uuid.uuid4().hex}.enc"
@@ -765,9 +982,9 @@ with tab_encode:
                         st.session_state.stego_result["sent"] = True
                         if "_search_results" in st.session_state: del st.session_state["_search_results"]
                         st.rerun()
-                    except Exception as e: st.error(f"Error sending: {e}")
+                    except Exception as e: st.error(f"Transmission error: {e}")
 
-        if st.button("🔄 Start New Encoding"):
+        if st.button("New Synthesis Session"):
             st.session_state.stego_result=None
             st.session_state["_passphrase_confirmed"]=False
             st.session_state["_passphrase_value"]=""
@@ -779,45 +996,45 @@ with tab_inbox:
     ch,cr=st.columns([4,1])
     with ch:
         st.markdown("""<div class="section-header">
-        <span class="icon">📥</span><h2>Secret Inbox</h2></div>""", unsafe_allow_html=True)
+        <h2>Incoming Encrypted Transmissions</h2></div>""", unsafe_allow_html=True)
     with cr:
-        if st.button("🔄 Refresh",use_container_width=True,key="ref_in"): st.rerun()
+        if st.button("Refresh", use_container_width=True, key="ref_in"): st.rerun()
 
     inbox=get_inbox(uid)
     if not inbox:
-        st.markdown(f"""<div class="glass-card" style="text-align:center;padding:3rem">
-        <div style="font-size:3rem;margin-bottom:1rem">📭</div>
-        <div style="color:rgba(255,255,255,0.4);font-size:1rem">Your inbox is empty.<br>
-        <span style="font-size:.85rem">Share your Stego-ID <b style="color:#a78bfa">{stego_id}</b> so others can send you images.</span>
+        st.markdown(f"""<div class="glass-card" style="text-align:center;padding:2.5rem">
+        <div style="color:#737373;font-size:0.95rem">No incoming transmissions recorded.<br>
+        <span style="font-size:0.8rem;color:#555555">Provide assigned Stego-ID <code style="color:#ffffff">{stego_id}</code> for inbound transmissions.</span>
         </div></div>""", unsafe_allow_html=True)
     else:
         unread=sum(1 for m in inbox if not m["revealed"])
         st.markdown(f"""<div class="metric-row">
-        <div class="metric-card"><div class="metric-val">{len(inbox)}</div><div class="metric-lbl">Total</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:#a78bfa">{unread}</div><div class="metric-lbl">Unrevealed</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:#34d399">{len(inbox)-unread}</div><div class="metric-lbl">Revealed</div></div>
+        <div class="metric-card"><div class="metric-val">{len(inbox)}</div><div class="metric-lbl">Total Received</div></div>
+        <div class="metric-card"><div class="metric-val">{unread}</div><div class="metric-lbl">Pending Decryption</div></div>
+        <div class="metric-card"><div class="metric-val">{len(inbox)-unread}</div><div class="metric-lbl">Decrypted</div></div>
         </div>""", unsafe_allow_html=True)
 
         for msg in inbox:
             si=msg.get("profiles") or {}; sn=si.get("username","Unknown"); ssid=si.get("stego_id","")
             ir=msg["revealed"]; d=msg["created_at"][:10]
             cc="read" if ir else "unread"; sc="status-read" if ir else "status-unread"
-            st_=("✅ Revealed" if ir else "🔒 Waiting")
-            nh=f'<div style="color:rgba(255,255,255,0.4);font-size:.83rem;margin-top:6px">💬 {msg["note"]}</div>' if msg.get("note") else ""
+            st_=("Decrypted" if ir else "Encrypted")
+            nh=f'<div style="color:#888888;font-size:0.8rem;margin-top:6px">Note: {msg["note"]}</div>' if msg.get("note") else ""
             st.markdown(f"""<div class="msg-card {cc}"><div class="msg-meta">
-            <span class="sender-tag">📨 From {sn}</span>
-            <span style="color:rgba(255,255,255,0.25);font-family:'JetBrains Mono';font-size:.72rem">{ssid}</span>
-            <span class="date-tag">{d}</span><span class="status-tag {sc}">{st_}</span>
-            <span class="lock-tag">🔑 Passphrase</span>
+            <span class="sender-tag">From: {sn}</span>
+            <span style="color:#666666;font-family:'JetBrains Mono';font-size:0.72rem">{ssid}</span>
+            <span class="date-tag">{d}</span>
+            <span class="status-tag {sc}">{st_}</span>
+            <span class="lock-tag">AES-256</span>
             </div>{nh}</div>""", unsafe_allow_html=True)
 
             if not ir:
-                pp_in=st.text_input("🔑 Enter passphrase to decrypt",type="password",key=f"pp_{msg['id']}")
-                if st.button("🔓 Decrypt & Reveal",key=f"btn_{msg['id']}",use_container_width=True):
+                pp_in=st.text_input("Decryption passphrase", type="password", key=f"pp_{msg['id']}", placeholder="Enter passphrase to derive AES-256 key")
+                if st.button("Decrypt & Reconstruct", key=f"btn_{msg['id']}", use_container_width=True):
                     if not pp_in:
-                        st.error("Passphrase required to decrypt.")
+                        st.error("Passphrase required for key derivation.")
                     else:
-                        with st.spinner("Decrypting & revealing..."):
+                        with st.spinner("Deriving AES-256 key and reconstructing payload..."):
                             try:
                                 nonce=msg.get("encryption_iv",""); salt=msg.get("sender_public_key","")
                                 enc=download_stego(msg["stego_path"])
@@ -825,175 +1042,163 @@ with tab_inbox:
                                 stego_img=Image.open(io.BytesIO(dec)); stego_t=preprocess(stego_img)
                                 with torch.no_grad(): rev_t=reveal_net(stego_t)
                                 rev_img=postprocess(rev_t)
-                                st.markdown(f"""<div class="success-banner">🎉 Secret revealed from <b>{sn}</b>!</div>""",unsafe_allow_html=True)
+                                st.markdown(f"""<div class="success-banner">Decryption verified. Secret payload reconstructed from <b>{sn}</b>.</div>""",unsafe_allow_html=True)
                                 c1,c2=st.columns(2)
-                                with c1: st.image(stego_img,use_container_width=True); st.markdown('<div class="img-label">🔒 Stego</div>',unsafe_allow_html=True)
-                                with c2: st.image(rev_img,use_container_width=True); st.markdown('<div class="img-label">🤫 Revealed</div>',unsafe_allow_html=True)
-                                st.download_button("⬇️ Download",data=to_bytes(rev_img),file_name=f"secret_{sn}.png",mime="image/png",key=f"dl_{msg['id']}")
+                                with c1: st.image(stego_img,use_container_width=True); st.markdown('<div class="img-label">Received Stego</div>',unsafe_allow_html=True)
+                                with c2: st.image(rev_img,use_container_width=True); st.markdown('<div class="img-label">Reconstructed Secret</div>',unsafe_allow_html=True)
+                                st.download_button("Download Reconstructed Image", data=to_bytes(rev_img), file_name=f"reconstructed_{sn}.png", mime="image/png", key=f"dl_{msg['id']}")
                                 mark_revealed(msg["id"])
                             except Exception as e:
                                 if "tag" in str(e).lower() or "InvalidTag" in str(type(e).__name__):
-                                    st.markdown('<div class="error-banner">❌ Wrong passphrase! Cannot decrypt.</div>',unsafe_allow_html=True)
-                                else: st.error(f"Error: {e}")
-            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+                                    st.markdown('<div class="error-banner">Authentication failure: Invalid passphrase or corrupted ciphertext.</div>',unsafe_allow_html=True)
+                                else: st.error(f"Decryption error: {e}")
+            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-# ═══════════════════ DECODE (Upload) ═══════════════════
+# ═══════════════════ DECODE ═══════════════════
 with tab_decode:
     st.markdown("""<div class="section-header">
-    <span class="icon">🔓</span><h2>Decode Stego Image</h2></div>""", unsafe_allow_html=True)
+    <h2>Neural Reveal Inference</h2></div>""", unsafe_allow_html=True)
     st.markdown("""<div class="info-banner">
-    Upload a stego image to reveal the hidden secret inside. If the image was <b>encrypted</b> with a passphrase,
-    enter it below. If it's an <b>unencrypted</b> stego PNG (downloaded directly), just upload and reveal.
+    Upload a stego image to reconstruct embedded secret image. If encrypted with a passphrase, provide it for key derivation. Direct unencrypted stego PNGs can be reconstructed without a passphrase.
     </div>""", unsafe_allow_html=True)
 
-    # Upload stego image
-    st.markdown("#### 📤 Step 1 — Upload Stego Image")
+    st.markdown("#### 1. Stego Image Input")
     decode_file = st.file_uploader("Upload stego image", type=["jpg","jpeg","png"], key="decode_upload", label_visibility="collapsed")
 
     if decode_file:
-        st.image(decode_file, use_container_width=True, caption="Uploaded Stego Image")
+        st.image(decode_file, use_container_width=True, caption="Stego Carrier Input")
 
-        # Optional passphrase
-        st.markdown("#### 🔑 Step 2 — Passphrase (optional)")
-        decode_pp = st.text_input("🔑 Passphrase", type="password", key="decode_pp",
-                                   placeholder="Only needed if the image was encrypted with a passphrase...")
-        st.markdown("""<div class="info-banner" style="font-size:.82rem">
-        💡 If you <b>downloaded</b> the stego image directly, no passphrase is needed — just click Reveal.<br>
-        If the image was <b>sent via the app</b>, use the <b>Inbox</b> tab instead for automatic decryption.
-        </div>""", unsafe_allow_html=True)
+        st.markdown("#### 2. Passphrase Configuration (If Encrypted)")
+        decode_pp = st.text_input("Passphrase", type="password", key="decode_pp",
+                                   placeholder="Leave blank if using raw unencrypted stego image...")
 
-        # Reveal button
-        st.markdown("#### 🧠 Step 3 — Reveal Hidden Image")
-        if st.button("🔓 Reveal Secret Image", type="primary", use_container_width=True, key="decode_reveal_btn"):
-            with st.spinner("🧠 Running neural network reveal..."):
+        st.markdown("#### 3. Reconstruct Secret Payload")
+        if st.button("Execute Reveal Network", type="primary", use_container_width=True, key="decode_reveal_btn"):
+            with st.spinner("Forward pass through Reveal Network..."):
                 try:
                     raw_bytes = decode_file.getvalue()
-
                     stego_img = Image.open(io.BytesIO(raw_bytes))
                     stego_t = preprocess(stego_img)
                     with torch.no_grad():
                         rev_t = reveal_net(stego_t)
                     rev_img = postprocess(rev_t)
 
-                    st.markdown("""<div class="success-banner">🎉 Secret image revealed!</div>""",
+                    st.markdown("""<div class="success-banner">Neural reveal inference completed successfully.</div>""",
                                 unsafe_allow_html=True)
                     c1, c2 = st.columns(2)
                     with c1:
                         st.image(stego_img, use_container_width=True)
-                        st.markdown('<div class="img-label">🔒 Stego Input</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="img-label">Stego Input</div>', unsafe_allow_html=True)
                     with c2:
                         st.image(rev_img, use_container_width=True)
-                        st.markdown('<div class="img-label">🤫 Revealed Secret</div>', unsafe_allow_html=True)
-                    st.download_button("⬇️ Download Revealed Image", data=to_bytes(rev_img),
-                                       file_name="revealed_secret.png", mime="image/png", key="decode_dl")
+                        st.markdown('<div class="img-label">Reconstructed Secret</div>', unsafe_allow_html=True)
+                    st.download_button("Download Reconstructed Image", data=to_bytes(rev_img),
+                                       file_name="reconstructed_secret.png", mime="image/png", key="decode_dl")
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    st.error(f"Inference error: {e}")
 
-# ═══════════════════ SENT ═══════════════════
+# ═══════════════════ SENT HISTORY ═══════════════════
 with tab_sent:
     st.markdown("""<div class="section-header">
-    <span class="icon">📨</span><h2>Sent Messages</h2></div>""", unsafe_allow_html=True)
+    <h2>Outbound Transmission Log</h2></div>""", unsafe_allow_html=True)
     sent=get_sent(uid)
     if not sent:
-        st.markdown("""<div class="glass-card" style="text-align:center;padding:3rem">
-        <div style="font-size:3rem;margin-bottom:1rem">📤</div>
-        <div style="color:rgba(255,255,255,0.4)">No messages sent yet.</div></div>""",unsafe_allow_html=True)
+        st.markdown("""<div class="glass-card" style="text-align:center;padding:2.5rem">
+        <div style="color:#737373">No outbound transmissions logged.</div></div>""",unsafe_allow_html=True)
     else:
         st.markdown(f"""<div class="metric-row">
-        <div class="metric-card"><div class="metric-val">{len(sent)}</div><div class="metric-lbl">Total Sent</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:#34d399">{sum(1 for m in sent if m['revealed'])}</div><div class="metric-lbl">Opened</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:#a78bfa">{sum(1 for m in sent if not m['revealed'])}</div><div class="metric-lbl">Pending</div></div>
+        <div class="metric-card"><div class="metric-val">{len(sent)}</div><div class="metric-lbl">Total Dispatched</div></div>
+        <div class="metric-card"><div class="metric-val">{sum(1 for m in sent if m['revealed'])}</div><div class="metric-lbl">Decrypted by Recipient</div></div>
+        <div class="metric-card"><div class="metric-val">{sum(1 for m in sent if not m['revealed'])}</div><div class="metric-lbl">Pending Recipient Action</div></div>
         </div>""", unsafe_allow_html=True)
         for msg in sent:
             ri=msg.get("profiles") or {}; rn=ri.get("username","Unknown"); rsid=ri.get("stego_id","")
             d=msg["created_at"][:10]; op=msg["revealed"]
-            st_=("✅ Opened" if op else "⏳ Pending"); sc=("status-read" if op else "status-unread")
-            nh=f'<div style="color:rgba(255,255,255,0.4);font-size:.83rem;margin-top:6px">💬 {msg["note"]}</div>' if msg.get("note") else ""
+            st_=("Decrypted" if op else "Pending"); sc=("status-read" if op else "status-unread")
+            nh=f'<div style="color:#888888;font-size:0.8rem;margin-top:6px">Note: {msg["note"]}</div>' if msg.get("note") else ""
             st.markdown(f"""<div class="msg-card"><div class="msg-meta">
-            <span class="sender-tag">📨 To {rn}</span>
-            <span style="color:rgba(255,255,255,0.25);font-family:'JetBrains Mono';font-size:.72rem">{rsid}</span>
-            <span class="date-tag">{d}</span><span class="status-tag {sc}">{st_}</span>
-            <span class="lock-tag">🔑</span>
+            <span class="sender-tag">To: {rn}</span>
+            <span style="color:#666666;font-family:'JetBrains Mono';font-size:0.72rem">{rsid}</span>
+            <span class="date-tag">{d}</span>
+            <span class="status-tag {sc}">{st_}</span>
+            <span class="lock-tag">AES-256</span>
             </div>{nh}</div>""", unsafe_allow_html=True)
 
-# ═══════════════════ DEFENSE & PROFILE ═══════════════════
+# ═══════════════════ SYSTEM ARCHITECTURE ═══════════════════
 with tab_profile:
     st.markdown("""<div class="section-header">
-    <span class="icon">👤</span><h2>Account Profile & Technical Architecture</h2></div>""", unsafe_allow_html=True)
+    <h2>System Architecture & Cryptographic Verification</h2></div>""", unsafe_allow_html=True)
     
     st.markdown(f"""<div class="profile-id">
-    <div class="id-lbl">YOUR OFFICIAL STEGO-ID</div>
+    <div class="id-lbl">ASSIGNED STEGO-ID</div>
     <div class="id-val">{stego_id}</div>
-    <div class="id-lbl" style="margin-top:8px">Share this ID so other users can search and send encrypted stego images to you</div>
+    <div class="id-lbl" style="margin-top:4px">Network Routing Identifier</div>
     </div>""", unsafe_allow_html=True)
     
     c1, c2 = st.columns(2)
     with c1:
         st.markdown(f"""<div class="glass-card">
-        <div style="color:#c084fc;font-weight:700;margin-bottom:12px;font-size:1.05rem">📋 Account Profile</div>
-        <div style="color:rgba(255,255,255,0.7);font-size:.92rem;line-height:2.2">
-        <b style="color:white">Username:</b> {uname}<br>
-        <b style="color:white">Stego-ID:</b> <code style="color:#a78bfa;font-size:1rem">{stego_id}</code><br>
-        <b style="color:white">User UUID:</b> <code style="font-size:0.8rem;color:rgba(255,255,255,0.5)">{uid}</code><br>
-        <b style="color:white">Status:</b> <span style="color:#34d399">● Authenticated & Active</span>
+        <div style="color:#ffffff;font-weight:600;margin-bottom:8px;font-size:0.95rem">Account Configuration</div>
+        <div style="color:#a3a3a3;font-size:0.88rem;line-height:2">
+        <b style="color:#ffffff">Username:</b> {uname}<br>
+        <b style="color:#ffffff">Stego-ID:</b> <code style="color:#ffffff">{stego_id}</code><br>
+        <b style="color:#ffffff">Principal UUID:</b> <code style="font-size:0.75rem;color:#737373">{uid}</code><br>
+        <b style="color:#ffffff">Authorization:</b> Authenticated
         </div></div>""", unsafe_allow_html=True)
     with c2:
         st.markdown("""<div class="glass-card">
-        <div style="color:#60a5fa;font-weight:700;margin-bottom:12px;font-size:1.05rem">🔐 Cryptographic Engine</div>
-        <div style="color:rgba(255,255,255,0.7);font-size:.92rem;line-height:2.2">
-        <b style="color:white">Cipher:</b> AES-256-GCM (Authenticated AEAD)<br>
-        <b style="color:white">KDF:</b> PBKDF2-HMAC-SHA256 (480,000 rounds)<br>
-        <b style="color:white">Nonce / IV:</b> 96-bit cryptographically secure random<br>
-        <b style="color:white">Salt:</b> 128-bit random salt per message
+        <div style="color:#ffffff;font-weight:600;margin-bottom:8px;font-size:0.95rem">Cryptographic Parameters</div>
+        <div style="color:#a3a3a3;font-size:0.88rem;line-height:2">
+        <b style="color:#ffffff">Cipher:</b> AES-256-GCM (Authenticated AEAD)<br>
+        <b style="color:#ffffff">KDF:</b> PBKDF2-HMAC-SHA256 (480,000 iterations)<br>
+        <b style="color:#ffffff">Initialization Vector:</b> 96-bit random nonce<br>
+        <b style="color:#ffffff">Salt:</b> 128-bit cryptographically secure salt
         </div></div>""", unsafe_allow_html=True)
 
-    st.markdown("### 🎓 Project Architecture & Viva Defense Guide")
-    st.markdown("""<div class="info-banner" style="margin-bottom:1.5rem">
-    💡 <b>Examiner / Viva Quick Reference:</b> This section explains the exact engineering decisions and theoretical foundations of this system.
-    </div>""", unsafe_allow_html=True)
+    st.markdown("#### Technical Specification & Verification Analysis")
 
     d1, d2 = st.columns(2)
     with d1:
         st.markdown("""<div class="glass-card">
-        <div style="color:#a78bfa;font-weight:700;font-size:1rem;margin-bottom:8px">🧠 1. Dual U-Net Neural Architecture</div>
-        <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.6">
-        • <b>Hiding Network:</b> Takes 6 input channels (3 Cover + 3 Secret) and outputs a 3-channel Stego image.<br>
-        • <b>Reveal Network:</b> Takes the 3-channel Stego image and reconstructs the original Secret image.<br>
-        • <b>Skip Connections:</b> Preserves high-frequency spatial details (edges, textures) so human inspection cannot spot differences.
+        <div style="color:#ffffff;font-weight:600;font-size:0.9rem;margin-bottom:6px">1. Dual U-Net Neural Pipeline</div>
+        <p style="color:#888888;font-size:0.84rem;line-height:1.6">
+        • <b>Hiding Network:</b> Concatenates carrier (3 channels) and payload (3 channels) into a 6-channel tensor, outputting a 3-channel synthesized stego image.<br>
+        • <b>Reveal Network:</b> Inverts the high-frequency residual distribution from the 3-channel stego carrier to reconstruct the 3-channel secret image.<br>
+        • <b>Skip Connections:</b> Preserves spatial gradients and high-frequency edge information to minimize perceptual artifacts.
         </p>
         </div>""", unsafe_allow_html=True)
 
         st.markdown("""<div class="glass-card">
-        <div style="color:#34d399;font-weight:700;font-size:1rem;margin-bottom:8px">📊 2. Steganographic Metrics (PSNR & SSIM)</div>
-        <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.6">
-        • <b>PSNR (>30 dB):</b> Quantifies signal quality. High PSNR proves pixel noise is imperceptible to the human eye.<br>
-        • <b>SSIM (>0.95):</b> Evaluates luminance, contrast, and structure against the human visual cortex.<br>
-        • <b>Detection Resistance (%):</b> Weighted composite metric (70% SSIM + 30% PSNR) against statistical steganalysis.
+        <div style="color:#ffffff;font-weight:600;font-size:0.9rem;margin-bottom:6px">2. Steganographic Distortion Metrics</div>
+        <p style="color:#888888;font-size:0.84rem;line-height:1.6">
+        • <b>PSNR (&gt; 30 dB):</b> Quantifies signal degradation relative to carrier image. Values exceeding 30 dB are imperceptible to human visual inspection.<br>
+        • <b>SSIM (&gt; 0.95):</b> Assesses structural fidelity, luminance, and contrast preservation against human visual cortex models.<br>
+        • <b>Detection Resistance (%):</b> Composite weighted index (70% SSIM + 30% PSNR) evaluating resilience against statistical steganalysis.
         </p>
         </div>""", unsafe_allow_html=True)
 
     with d2:
         st.markdown("""<div class="glass-card">
-        <div style="color:#38bdf8;font-weight:700;font-size:1rem;margin-bottom:8px">🛡️ 3. Why AES-256 + Steganography?</div>
-        <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.6">
-        • Traditional neural steganography is vulnerable if an attacker obtains the network weights.<br>
-        • In <b>Deep-Stego Secure</b>, the stego payload is encrypted with <b>AES-256-GCM</b> before transmission.<br>
-        • Even if a hostile party extracts the image bits, without the passphrase it is mathematically undecryptable.
+        <div style="color:#ffffff;font-weight:600;font-size:0.9rem;margin-bottom:6px">3. Defense-in-Depth Cryptography</div>
+        <p style="color:#888888;font-size:0.84rem;line-height:1.6">
+        • Standard neural steganography is vulnerable to weight leakage or extraction attacks.<br>
+        • In Deep-Stego, synthesized payloads are encrypted using <b>AES-256-GCM</b> prior to transmission.<br>
+        • An adversary possessing the exact model weights cannot decrypt or reconstruct payload data without the PBKDF2-derived key.
         </p>
         </div>""", unsafe_allow_html=True)
 
         st.markdown("""<div class="glass-card">
-        <div style="color:#fbbf24;font-weight:700;font-size:1rem;margin-bottom:8px">☁️ 4. Zero-Knowledge Cloud Storage</div>
-        <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.6">
-        • Images are stored in Supabase Storage with per-file encryption IVs and salt.<br>
-        • Passphrases are <b>never stored</b> in the database.<br>
-        • Only the intended recipient who possesses the agreed passphrase can derive the AES key and reveal the secret.
+        <div style="color:#ffffff;font-weight:600;font-size:0.9rem;margin-bottom:6px">4. Zero-Knowledge Cloud Storage</div>
+        <p style="color:#888888;font-size:0.84rem;line-height:1.6">
+        • Ciphertext blobs are stored in Supabase Object Storage isolated with per-file salt and nonce.<br>
+        • Passphrases and plaintext decryption keys are never stored on cloud servers.<br>
+        • Decryption occurs entirely in client memory during authenticated user sessions.
         </p>
         </div>""", unsafe_allow_html=True)
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown("""<div style="text-align:center;color:rgba(255,255,255,0.25);font-size:.82rem;padding:1rem 0;
-font-family:'Inter',sans-serif;letter-spacing:.02em">
-Deep-Stego Secure · Dual U-Net Steganography · AES-256-GCM Cryptography · PyTorch + Streamlit + Supabase
+st.markdown("""<div style="text-align:center;color:#555555;font-size:0.75rem;padding:0.75rem 0;
+font-family:'Inter',sans-serif;letter-spacing:0.02em">
+Deep-Stego · Dual U-Net Steganography · AES-256-GCM Cryptographic Layer · PyTorch + Streamlit + Supabase
 </div>""", unsafe_allow_html=True)

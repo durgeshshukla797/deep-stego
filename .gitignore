@@ -1,24 +1,32 @@
-# ── HF Spaces & Python ──
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.egg-info/
+*$py.class
+*.so
+
+# Distribution / packaging
 dist/
 build/
+*.egg-info/
+
+# Environments and credentials
 .env
+.env.local
+.venv/
+venv/
+ENV/
 
-# ── Model weights (tracked via Git LFS on HF) ──
-# best.pt is tracked by LFS, not gitignored
-
-# ── IDE ──
+# IDE and Editor configurations
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
 
-# ── OS ──
-Thumbs.db
+# Operating System files
 .DS_Store
+Thumbs.db
+ehthumbs.db
 
-# ── Training artifacts (not needed for deployment) ──
-deep_stego_train.py
-notebook.pdf
-test_crypto.py
+# Jupyter & Scratch Notebooks
+.ipynb_checkpoints/
 deep-stego.ipynb
